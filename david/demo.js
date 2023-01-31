@@ -18,8 +18,8 @@ const two = new Two({
 const gridWidth = 25;
 const gridHeight = 25;
 
-cols = Array.from({ length: gridWidth}, (x, y) => {
-  return Array.from({ length: gridHeight }, (x, y) => Math.floor(Math.random() * 11));
+cols = Array.from({ length: gridWidth }, () => {
+  return Array.from({ length: gridHeight }, () => Math.floor(Math.random() * 11));
 });
 
 graph = new Graph(cols);
@@ -60,7 +60,9 @@ const squareToColor = function(square) {
 
 // Create a rectangle per grid square.
 
-var board = [];
+var board = Array.from({ length: gridWidth }, () => {
+  return Array.from({ length: gridHeight });
+});
 
 graph.nodes.forEach(square => {
   const middleX = two.width / 2;
@@ -72,7 +74,7 @@ graph.nodes.forEach(square => {
   const [colorR, colorG, colorB] = squareToColor(square);
   gridRect.fill = `rgb(${colorR * 255}, ${colorG * 255}, ${colorB * 255})`;
 
-  board.push(gridRect);
+  board[square.x][square.y] = gridRect;
 });
 
 /*two.bind('update', function() {
