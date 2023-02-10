@@ -53,7 +53,9 @@ const maxWeight = Math.max(...graph.nodes.map(n => n.weight));
 // Determine a square's fill color.
 const squareToColor = function(square) {
   const colorRange = minColor.range(maxColor, { space: "srgb" });
-  const weightPercent = (square.weight - minWeight) / (maxWeight - minWeight);
+  const weightPercent = (maxWeight == minWeight) ?
+    1 :
+    (square.weight - minWeight) / (maxWeight - minWeight);
 
   return square.weight == 0 ? [0, 0, 0] : colorRange(weightPercent).coords;
 };
