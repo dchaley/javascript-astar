@@ -66,6 +66,12 @@ var board = Array.from({ length: gridWidth }, () => {
   return Array.from({ length: gridHeight });
 });
 
+// Hack: make sure start/end aren't walls.
+const startNode = graph.grid[0][0];
+const endNode = graph.grid[21][21];
+startNode.weight = 1;
+endNode.weight = 1;
+
 graph.nodes.forEach(square => {
   const middleX = two.width / 2;
   const middleY = two.height / 2;
@@ -79,7 +85,21 @@ graph.nodes.forEach(square => {
   board[square.x][square.y] = gridRect;
 });
 
-/*two.bind('update', function() {
-  rect.rotation += 0.001;
-});*/
+two.bind('update', function(currentFrameNum) {
+  /* Nothing to do for update frame */
+});
+
+function main() {
+  // Solve the path.
+  result = astar.search(graph, startNode, endNode, {
+    //tickCallback: tickCallback
+  });
+
+  result.forEach(step => {
+    const gridRect = board[step.x][step.y];
+    gridRect.fill = 'rgb(0, 0, 255)';
+  });
+}
+
+main();
 
