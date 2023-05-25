@@ -18,8 +18,8 @@ const two = new Two({
 const gridWidth = 25;
 const gridHeight = 25;
 
-cols = Array.from({ length: gridWidth}, (x, y) => {
-  return Array.from({ length: gridHeight }, (x, y) => Math.floor(Math.random() * 11));
+cols = Array.from({ length: gridWidth }, () => {
+  return Array.from({ length: gridHeight }, () => Math.floor(Math.random() * 11));
 });
 
 graph = new Graph(cols);
@@ -53,14 +53,24 @@ const maxWeight = Math.max(...graph.nodes.map(n => n.weight));
 // Determine a square's fill color.
 const squareToColor = function(square) {
   const colorRange = minColor.range(maxColor, { space: "srgb" });
-  const weightPercent = (square.weight - minWeight) / (maxWeight - minWeight);
+  const weightPercent = (maxWeight == minWeight) ?
+    1 :
+    (square.weight - minWeight) / (maxWeight - minWeight);
 
   return square.weight == 0 ? [0, 0, 0] : colorRange(weightPercent).coords;
 };
 
 // Create a rectangle per grid square.
 
-var board = [];
+var board = Array.from({ length: gridWidth }, () => {
+  return Array.from({ length: gridHeight });
+});
+
+// Hack: make sure start/end aren't walls.
+const startNode = graph.grid[0][0];
+const endNode = graph.grid[21][21];
+startNode.weight = 1;
+endNode.weight = 1;
 
 graph.nodes.forEach(square => {
   const middleX = two.width / 2;
@@ -72,10 +82,68 @@ graph.nodes.forEach(square => {
   const [colorR, colorG, colorB] = squareToColor(square);
   gridRect.fill = `rgb(${colorR * 255}, ${colorG * 255}, ${colorB * 255})`;
 
-  board.push(gridRect);
+  board[square.x][square.y] = gridRect;
 });
 
-/*two.bind('update', function() {
-  rect.rotation += 0.001;
-});*/
+let searchTickHold = null;
+let lastSearchedSquare = null;
+
+const tickCallback = async function(square) {
+  // Highlight the current square
+  const rect = board[square.x][square.y];
+  rect.fill = `rgb(0, 255, 0)`;
+
+  // Reset the previous square to its heuristic prediction
+  if (lastSearchedSquare) {
+    const rect = board[lastSearchedSquare.x][lastSearchedSquare.y];
+    const percent = 1 - lastSearchedSquare.h / (gridWidth + gridHeight);
+    rect.fill = `rgb(${Math.floor(percent * 255)}, 0, 0)`;
+  }
+
+  lastSearchedSquare = square;
+
+  // Block further search until the tick hold is released.
+  // (this happens in the Two animation frame)
+  return new Promise(resolve => {
+    searchTickHold = resolve;
+  });
+};
+
+let lastTickFrameNum = null;
+
+two.bind('update', function(currentFrameNum) {
+  lastTickFrameNum = currentFrameNum;
+
+  if (searchTickHold) {
+    searchTickHold();
+    searchTickHold = null;
+  }
+});
+
+function main() {
+  //const tickCallback = () => { console.log('tick!'); };
+
+  // Solve the path.
+  result = astar.searchAsync(graph, startNode, endNode, {
+    tickFunction: tickCallback,
+    heuristic: astar.heuristics.manhattan,
+  });
+
+  /*
+  result.forEach(step => {
+    const gridRect = board[step.x][step.y];
+    gridRect.fill = 'rgb(0, 0, 255)';
+  });
+  */
+
+  // When the path is available, draw it.
+  result.then( (steps) => {
+    steps.forEach(step => {
+      const gridRect = board[step.x][step.y];
+      gridRect.fill = 'rgb(0, 0, 255)';
+    });
+  });
+}
+
+main();
 
