@@ -85,19 +85,63 @@ graph.nodes.forEach(square => {
   board[square.x][square.y] = gridRect;
 });
 
+let searchTickHold = null;
+let lastSearchedSquare = null;
+
+const tickCallback = async function(square) {
+  // Highlight the current square
+  const rect = board[square.x][square.y];
+  rect.fill = `rgb(0, 255, 0)`;
+
+  // Reset the previous square to its heuristic prediction
+  if (lastSearchedSquare) {
+    const rect = board[lastSearchedSquare.x][lastSearchedSquare.y];
+    const percent = 1 - lastSearchedSquare.h / (gridWidth + gridHeight);
+    rect.fill = `rgb(${Math.floor(percent * 255)}, 0, 0)`;
+  }
+
+  lastSearchedSquare = square;
+
+  // Block further search until the tick hold is released.
+  // (this happens in the Two animation frame)
+  return new Promise(resolve => {
+    searchTickHold = resolve;
+  });
+};
+
+let lastTickFrameNum = null;
+
 two.bind('update', function(currentFrameNum) {
-  /* Nothing to do for update frame */
+  lastTickFrameNum = currentFrameNum;
+
+  if (searchTickHold) {
+    searchTickHold();
+    searchTickHold = null;
+  }
 });
 
 function main() {
+  //const tickCallback = () => { console.log('tick!'); };
+
   // Solve the path.
-  result = astar.search(graph, startNode, endNode, {
-    //tickCallback: tickCallback
+  result = astar.searchAsync(graph, startNode, endNode, {
+    tickFunction: tickCallback,
+    heuristic: astar.heuristics.manhattan,
   });
 
+  /*
   result.forEach(step => {
     const gridRect = board[step.x][step.y];
     gridRect.fill = 'rgb(0, 0, 255)';
+  });
+  */
+
+  // When the path is available, draw it.
+  result.then( (steps) => {
+    steps.forEach(step => {
+      const gridRect = board[step.x][step.y];
+      gridRect.fill = 'rgb(0, 0, 255)';
+    });
   });
 }
 

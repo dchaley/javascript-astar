@@ -76,6 +76,42 @@ var astar = {
     // No result was found - empty array signifies failure to find path.
     return [];
   },
+  searchAsync: async function(graph, start, end, options) {
+    graph.cleanDirty();
+    options = options || {};
+    var heuristic = options.heuristic || astar.heuristics.manhattan;
+    var closest = options.closest || false;
+    const tickFunction = options.tickFunction || (() => {});
+
+    var openHeap = getHeap();
+    var closestNode = start; // set the start node to be the closest if required
+
+    start.h = heuristic(start, end);
+    graph.markDirty(start);
+
+    openHeap.push(start);
+
+    while (openHeap.size() > 0) {
+      // Grab the lowest f(x) to process next.  Heap keeps this sorted for us.
+      var node = openHeap.pop();
+
+      await tickFunction(node);
+
+      const h = (x, y) => heuristic(x, y) * 1.01;
+
+      [path, closestNode] = astar.visitNode(graph, openHeap, h, end, closestNode, node);
+      if (path) {
+        return path;
+      }
+    }
+
+    if (closest) {
+      return pathTo(closestNode);
+    }
+
+    // No result was found - empty array signifies failure to find path.
+    return [];
+  },
   visitNode: function(graph, queue, heuristic, end, closestNode, node) {
     // End case -- result has been found, return the traced path.
     if (node === end) {
